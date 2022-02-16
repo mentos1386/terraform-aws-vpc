@@ -58,6 +58,12 @@ variable "elasticache_subnet_ipv6_prefixes" {
   default     = []
 }
 
+variable "memorydb_subnet_ipv6_prefixes" {
+  description = "Assigns IPv6 memorydb subnet id based on the Amazon provided /56 prefix base 10 integer (0-256). Must be of equal length to the corresponding IPv4 subnet list"
+  type        = list(string)
+  default     = []
+}
+
 variable "intra_subnet_ipv6_prefixes" {
   description = "Assigns IPv6 intra subnet id based on the Amazon provided /56 prefix base 10 integer (0-256). Must be of equal length to the corresponding IPv4 subnet list"
   type        = list(string)
@@ -102,6 +108,12 @@ variable "redshift_subnet_assign_ipv6_address_on_creation" {
 
 variable "elasticache_subnet_assign_ipv6_address_on_creation" {
   description = "Assign IPv6 address on elasticache subnet, must be disabled to change IPv6 CIDRs. This is the IPv6 equivalent of map_public_ip_on_launch"
+  type        = bool
+  default     = null
+}
+
+variable "memorydb_subnet_assign_ipv6_address_on_creation" {
+  description = "Assign IPv6 address on memorydb subnet, must be disabled to change IPv6 CIDRs. This is the IPv6 equivalent of map_public_ip_on_launch"
   type        = bool
   default     = null
 }
@@ -166,6 +178,12 @@ variable "elasticache_subnet_suffix" {
   default     = "elasticache"
 }
 
+variable "memorydb_subnet_suffix" {
+  description = "Suffix to append to memorydb subnets name"
+  type        = string
+  default     = "memory"
+}
+
 variable "public_subnets" {
   description = "A list of public subnets inside the VPC"
   type        = list(string)
@@ -202,6 +220,12 @@ variable "elasticache_subnets" {
   default     = []
 }
 
+variable "memorydb_subnets" {
+  description = "A list of memorydb subnets"
+  type        = list(string)
+  default     = []
+}
+
 variable "intra_subnets" {
   description = "A list of intra subnets"
   type        = list(string)
@@ -232,6 +256,12 @@ variable "create_elasticache_subnet_route_table" {
   default     = false
 }
 
+variable "create_memorydb_subnet_route_table" {
+  description = "Controls if separate route table for memorydb should be created"
+  type        = bool
+  default     = false
+}
+
 variable "create_database_subnet_group" {
   description = "Controls if database subnet group should be created (n.b. database_subnets must also be set)"
   type        = bool
@@ -240,6 +270,12 @@ variable "create_database_subnet_group" {
 
 variable "create_elasticache_subnet_group" {
   description = "Controls if elasticache subnet group should be created"
+  type        = bool
+  default     = true
+}
+
+variable "create_memorydb_subnet_group" {
+  description = "Controls if memorydb subnet group should be created"
   type        = bool
   default     = true
 }
@@ -484,6 +520,12 @@ variable "elasticache_route_table_tags" {
   default     = {}
 }
 
+variable "memorydb_route_table_tags" {
+  description = "Additional tags for the memorydb route tables"
+  type        = map(string)
+  default     = {}
+}
+
 variable "intra_route_table_tags" {
   description = "Additional tags for the intra route tables"
   type        = map(string)
@@ -544,6 +586,24 @@ variable "elasticache_subnet_tags" {
   default     = {}
 }
 
+variable "memorydb_subnet_group_name" {
+  description = "Name of memorydb subnet group"
+  type        = string
+  default     = null
+}
+
+variable "memorydb_subnet_group_tags" {
+  description = "Additional tags for the memorydb subnet group"
+  type        = map(string)
+  default     = {}
+}
+
+variable "memorydb_subnet_tags" {
+  description = "Additional tags for the memorydb subnets"
+  type        = map(string)
+  default     = {}
+}
+
 variable "intra_subnet_tags" {
   description = "Additional tags for the intra subnets"
   type        = map(string)
@@ -588,6 +648,12 @@ variable "redshift_acl_tags" {
 
 variable "elasticache_acl_tags" {
   description = "Additional tags for the elasticache subnets network ACL"
+  type        = map(string)
+  default     = {}
+}
+
+variable "memorydb_acl_tags" {
+  description = "Additional tags for the memorydb subnets network ACL"
   type        = map(string)
   default     = {}
 }
@@ -762,6 +828,12 @@ variable "redshift_dedicated_network_acl" {
 
 variable "elasticache_dedicated_network_acl" {
   description = "Whether to use dedicated network ACL (not default) and custom rules for elasticache subnets"
+  type        = bool
+  default     = false
+}
+
+variable "memorydb_dedicated_network_acl" {
+  description = "Whether to use dedicated network ACL (not default) and custom rules for memorydb subnets"
   type        = bool
   default     = false
 }
@@ -1024,6 +1096,38 @@ variable "elasticache_inbound_acl_rules" {
 
 variable "elasticache_outbound_acl_rules" {
   description = "Elasticache subnets outbound network ACL rules"
+  type        = list(map(string))
+
+  default = [
+    {
+      rule_number = 100
+      rule_action = "allow"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_block  = "0.0.0.0/0"
+    },
+  ]
+}
+
+variable "memorydb_inbound_acl_rules" {
+  description = "MemoryDB subnets inbound network ACL rules"
+  type        = list(map(string))
+
+  default = [
+    {
+      rule_number = 100
+      rule_action = "allow"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_block  = "0.0.0.0/0"
+    },
+  ]
+}
+
+variable "memorydb_outbound_acl_rules" {
+  description = "MemoryDB subnets outbound network ACL rules"
   type        = list(map(string))
 
   default = [
