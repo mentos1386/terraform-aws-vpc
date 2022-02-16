@@ -203,6 +203,26 @@ output "elasticache_subnets_ipv6_cidr_blocks" {
   value       = aws_subnet.elasticache[*].ipv6_cidr_block
 }
 
+output "memorydb_subnets" {
+  description = "List of IDs of memorydb subnets"
+  value       = aws_subnet.memorydb[*].id
+}
+
+output "memorydb_subnet_arns" {
+  description = "List of ARNs of memorydb subnets"
+  value       = aws_subnet.memorydb[*].arn
+}
+
+output "memorydb_subnets_cidr_blocks" {
+  description = "List of cidr_blocks of memorydb subnets"
+  value       = aws_subnet.memorydb[*].cidr_block
+}
+
+output "memorydb_subnets_ipv6_cidr_blocks" {
+  description = "List of IPv6 cidr_blocks of memorydb subnets in an IPv6 enabled VPC"
+  value       = aws_subnet.memorydb[*].ipv6_cidr_block
+}
+
 output "intra_subnets" {
   description = "List of IDs of intra subnets"
   value       = aws_subnet.intra[*].id
@@ -233,6 +253,16 @@ output "elasticache_subnet_group_name" {
   value       = try(aws_elasticache_subnet_group.elasticache[0].name, "")
 }
 
+output "memorydb_subnet_group" {
+  description = "ID of memorydb subnet group"
+  value       = try(aws_memorydb_subnet_group.memorydb[0].id, "")
+}
+
+output "memorydb_subnet_group_name" {
+  description = "Name of memorydb subnet group"
+  value       = try(aws_memorydb_subnet_group.memorydb[0].name, "")
+}
+
 output "public_route_table_ids" {
   description = "List of IDs of public route tables"
   value       = aws_route_table.public[*].id
@@ -256,6 +286,11 @@ output "redshift_route_table_ids" {
 output "elasticache_route_table_ids" {
   description = "List of IDs of elasticache route tables"
   value       = try(coalescelist(aws_route_table.elasticache[*].id, aws_route_table.private[*].id), [])
+}
+
+output "memorydb_route_table_ids" {
+  description = "List of IDs of memorydb route tables"
+  value       = try(coalescelist(aws_route_table.memorydb[*].id, aws_route_table.private[*].id), [])
 }
 
 output "intra_route_table_ids" {
@@ -321,6 +356,11 @@ output "redshift_public_route_table_association_ids" {
 output "elasticache_route_table_association_ids" {
   description = "List of IDs of the elasticache route table association"
   value       = aws_route_table_association.elasticache[*].id
+}
+
+output "memorydb_route_table_association_ids" {
+  description = "List of IDs of the memorydb route table association"
+  value       = aws_route_table_association.memorydb[*].id
 }
 
 output "intra_route_table_association_ids" {
@@ -513,6 +553,16 @@ output "elasticache_network_acl_arn" {
   value       = try(aws_network_acl.elasticache[0].arn, "")
 }
 
+output "memorydb_network_acl_id" {
+  description = "ID of the memorydb network ACL"
+  value       = try(aws_network_acl.memorydb[0].id, "")
+}
+
+output "memorydb_network_acl_arn" {
+  description = "ARN of the memorydb network ACL"
+  value       = try(aws_network_acl.memorydb[0].arn, "")
+}
+  
 # VPC flow log
 output "vpc_flow_log_id" {
   description = "The ID of the Flow Log resource"
