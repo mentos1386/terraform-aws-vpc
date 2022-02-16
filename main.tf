@@ -2,6 +2,7 @@ locals {
   max_subnet_length = max(
     length(var.private_subnets),
     length(var.elasticache_subnets),
+    length(var.memorydb_subnets),
     length(var.database_subnets),
     length(var.redshift_subnets),
   )
@@ -328,6 +329,22 @@ resource "aws_route_table" "elasticache" {
 }
 
 ################################################################################
+# MemoryDB routes
+################################################################################
+
+resource "aws_route_table" "memorydb" {
+  count = var.create_vpc && var.create_memorydb_subnet_route_table && length(var.memorydb_subnets) > 0 ? 1 : 0
+
+  vpc_id = local.vpc_id
+
+  tags = merge(
+    { "Name" = "${var.name}-${var.memorydb_subnet_suffix}" },
+    var.tags,
+    var.memorydb_route_table_tags,
+  )
+}
+
+################################################################################
 # Intra routes
 ################################################################################
 
@@ -548,6 +565,47 @@ resource "aws_elasticache_subnet_group" "elasticache" {
     { "Name" = coalesce(var.elasticache_subnet_group_name, var.name) },
     var.tags,
     var.elasticache_subnet_group_tags,
+  )
+}
+
+################################################################################
+# MemoryDB subnet
+################################################################################
+
+resource "aws_subnet" "memorydb" {
+  count = var.create_vpc && length(var.memorydb_subnets) > 0 ? length(var.memorydb_subnets) : 0
+
+  vpc_id                          = local.vpc_id
+  cidr_block                      = var.memorydb_subnets[count.index]
+  availability_zone               = length(regexall("^[a-z]{2}-", element(var.azs, count.index))) > 0 ? element(var.azs, count.index) : null
+  availability_zone_id            = length(regexall("^[a-z]{2}-", element(var.azs, count.index))) == 0 ? element(var.azs, count.index) : null
+  assign_ipv6_address_on_creation = var.memorydb_subnet_assign_ipv6_address_on_creation == null ? var.assign_ipv6_address_on_creation : var.memorydb_subnet_assign_ipv6_address_on_creation
+
+  ipv6_cidr_block = var.enable_ipv6 && length(var.memorydb_subnet_ipv6_prefixes) > 0 ? cidrsubnet(aws_vpc.this[0].ipv6_cidr_block, 8, var.memorydb_subnet_ipv6_prefixes[count.index]) : null
+
+  tags = merge(
+    {
+      "Name" = format(
+        "${var.name}-${var.memorydb_subnet_suffix}-%s",
+        element(var.azs, count.index),
+      )
+    },
+    var.tags,
+    var.memorydb_subnet_tags,
+  )
+}
+
+resource "aws_memorydb_subnet_group" "memorydb" {
+  count = var.create_vpc && length(var.memorydb_subnets) > 0 && var.create_memorydb_subnet_group ? 1 : 0
+
+  name        = coalesce(var.memorydb_subnet_group_name, var.name)
+  description = "memorydb subnet group for ${var.name}"
+  subnet_ids  = aws_subnet.memorydb[*].id
+
+  tags = merge(
+    { "Name" = coalesce(var.memorydb_subnet_group_name, var.name) },
+    var.tags,
+    var.memorydb_subnet_group_tags,
   )
 }
 
@@ -986,6 +1044,57 @@ resource "aws_network_acl_rule" "elasticache_outbound" {
   protocol        = var.elasticache_outbound_acl_rules[count.index]["protocol"]
   cidr_block      = lookup(var.elasticache_outbound_acl_rules[count.index], "cidr_block", null)
   ipv6_cidr_block = lookup(var.elasticache_outbound_acl_rules[count.index], "ipv6_cidr_block", null)
+}
+
+################################################################################
+# MemoryDB Network ACLs
+################################################################################
+
+resource "aws_network_acl" "memorydb" {
+  count = var.create_vpc && var.memorydb_dedicated_network_acl && length(var.memorydb_subnets) > 0 ? 1 : 0
+
+  vpc_id     = local.vpc_id
+  subnet_ids = aws_subnet.memorydb[*].id
+
+  tags = merge(
+    { "Name" = "${var.name}-${var.memorydb_subnet_suffix}" },
+    var.tags,
+    var.memorydb_acl_tags,
+  )
+}
+
+resource "aws_network_acl_rule" "memorydb_inbound" {
+  count = var.create_vpc && var.memorydb_dedicated_network_acl && length(var.memorydb_subnets) > 0 ? length(var.memorydb_inbound_acl_rules) : 0
+
+  network_acl_id = aws_network_acl.memorydb[0].id
+
+  egress          = false
+  rule_number     = var.memorydb_inbound_acl_rules[count.index]["rule_number"]
+  rule_action     = var.memorydb_inbound_acl_rules[count.index]["rule_action"]
+  from_port       = lookup(var.memorydb_inbound_acl_rules[count.index], "from_port", null)
+  to_port         = lookup(var.memorydb_inbound_acl_rules[count.index], "to_port", null)
+  icmp_code       = lookup(var.memorydb_inbound_acl_rules[count.index], "icmp_code", null)
+  icmp_type       = lookup(var.memorydb_inbound_acl_rules[count.index], "icmp_type", null)
+  protocol        = var.memorydb_inbound_acl_rules[count.index]["protocol"]
+  cidr_block      = lookup(var.memorydb_inbound_acl_rules[count.index], "cidr_block", null)
+  ipv6_cidr_block = lookup(var.memorydb_inbound_acl_rules[count.index], "ipv6_cidr_block", null)
+}
+
+resource "aws_network_acl_rule" "memorydb_outbound" {
+  count = var.create_vpc && var.memorydb_dedicated_network_acl && length(var.memorydb_subnets) > 0 ? length(var.memorydb_outbound_acl_rules) : 0
+
+  network_acl_id = aws_network_acl.memorydb[0].id
+
+  egress          = true
+  rule_number     = var.memorydb_outbound_acl_rules[count.index]["rule_number"]
+  rule_action     = var.memorydb_outbound_acl_rules[count.index]["rule_action"]
+  from_port       = lookup(var.memorydb_outbound_acl_rules[count.index], "from_port", null)
+  to_port         = lookup(var.memorydb_outbound_acl_rules[count.index], "to_port", null)
+  icmp_code       = lookup(var.memorydb_outbound_acl_rules[count.index], "icmp_code", null)
+  icmp_type       = lookup(var.memorydb_outbound_acl_rules[count.index], "icmp_type", null)
+  protocol        = var.memorydb_outbound_acl_rules[count.index]["protocol"]
+  cidr_block      = lookup(var.memorydb_outbound_acl_rules[count.index], "cidr_block", null)
+  ipv6_cidr_block = lookup(var.memorydb_outbound_acl_rules[count.index], "ipv6_cidr_block", null)
 }
 
 ################################################################################
